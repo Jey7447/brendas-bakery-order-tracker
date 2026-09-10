@@ -90,6 +90,7 @@ export default function Dashboard() {
   const [mobileNav, setMobileNav] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [payingId, setPayingId] = useState<string | null>(null);
 
   const TODAY = getToday();
 
@@ -135,8 +136,31 @@ export default function Dashboard() {
   const todayCount = orders.filter((o) => o.deliveryDate === TODAY).length;
   const todayRevenue = orders.filter((o) => o.deliveryDate === TODAY).reduce((s, o) => s + o.total, 0);
 
-  function markPaid(id: string) {
-    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, paymentStatus: "PAID" } : o)));
+  async function markPaid(id: string) {
+    if (payingId) return;
+
+    try {
+      setPayingId(id);
+      setLoadError("");
+
+      const response = await fetch("/api/dashboard/mark-paid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: id }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data?.success === false || data?.ok === false) {
+        throw new Error(data?.message || "Could not mark the order as paid.");
+      }
+
+      setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, paymentStatus: "PAID" } : o)));
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Could not mark the order as paid.");
+    } finally {
+      setPayingId(null);
+    }
   }
 
   return (
@@ -160,7 +184,7 @@ export default function Dashboard() {
 
         {loadError && (
           <div className="dashboard-notice">
-            <strong>Live orders could not be loaded.</strong> {loadError} Showing the demo orders for now.
+            <strong>Action or live-order warning:</strong> {loadError}
           </div>
         )}
 
@@ -188,7 +212,7 @@ export default function Dashboard() {
                 <div className="order-status"><span className={`status-dot ${order.orderStatus.toLowerCase()}`}></span>{statusLabel[order.orderStatus]}</div>
                 <div className={`payment-pill ${order.paymentStatus.toLowerCase()}`}>{order.paymentStatus === "PAID" ? <Check size={13} /> : <CircleDollarSign size={13} />} {order.paymentStatus === "PAID" ? "Paid" : "Unpaid"}</div>
                 <div className="order-total">{money(order.total)}</div>
-                {order.paymentStatus === "UNPAID" && <button className="pay-button" onClick={() => markPaid(order.id)}>Mark paid</button>}
+                {order.paymentStatus === "UNPAID" && <button className="pay-button" disabled={payingId === order.id} onClick={() => markPaid(order.id)}>{payingId === order.id ? "Saving…" : "Mark paid"}</button>}
                 <button className="row-more" onClick={() => setEditing(order)}><ChevronRight size={18} /></button>
               </article>
             ))}
