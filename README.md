@@ -1,17 +1,18 @@
 # Brenda's Bakery — lightweight order tracker
 
-This is the first V1 build based on the requirements:
+This is a lightweight customer-facing bakery website plus a simple order-book dashboard for Brenda.
 
-- Customer-facing bakery website with a warm editorial visual direction inspired by the supplied Dribbble reference.
+## Current build
+
+- Warm editorial bakery storefront inspired by the supplied Dribbble direction.
 - No customer login.
-- Cart and checkout shell.
-- Order confirmation/tracking page.
-- Brenda dashboard.
-- Add/edit/mark-paid interaction in the dashboard (currently demo/local state).
-- Automatic soonest-delivery sorting.
-- Today view.
-- Unpaid-today highlighting.
-- n8n webhook API route ready to connect to Google Sheets and email automation.
+- Product menu with categories and cart.
+- Functional customer checkout at `/checkout`.
+- Customer order confirmation/tracking page at `/order/[id]`.
+- Brenda dashboard at `/dashboard`.
+- Demo dashboard data with today/upcoming/all/unpaid views.
+- Automatic soonest-delivery sorting and unpaid-today highlighting.
+- n8n webhook API route ready to connect Google Sheets and email automation.
 
 ## Run
 
@@ -20,9 +21,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000
-
-Dashboard: http://localhost:3000/dashboard
+Open `http://localhost:3000`.
 
 ## n8n integration
 
@@ -33,26 +32,35 @@ N8N_ORDER_WEBHOOK_URL=https://YOUR-N8N-HOST/webhook/brendas-bakery-order
 N8N_WEBHOOK_SECRET=your-secret
 ```
 
-The Next.js route `/api/orders` forwards order payloads to n8n.
+The customer checkout posts to `/api/orders`. The route validates the request, creates an order ID, adds `createdAt`, `paymentStatus` and `orderStatus`, then forwards the order to n8n when the webhook environment variable is configured.
 
 ### Recommended n8n workflow
 
 Webhook
 → validate/normalize order
-→ generate order ID
 → Google Sheets: Append Row
-→ send Brenda notification
-→ send customer confirmation
+→ notify Brenda
+→ send customer confirmation email
 
-For dashboard actions, the next integration step is to add n8n endpoints for:
+### Webhook payload
 
-- create order
-- update order
-- mark paid
-- change order status
-- read/filter orders
+The webhook receives:
 
-The UI currently uses demo data so the design and interactions can be reviewed before wiring Google Sheets.
+- `orderId`
+- `createdAt`
+- `customerName`
+- `phone`
+- `email`
+- `items` (`productId`, `name`, `quantity`, `unitPrice`)
+- `total`
+- `deliveryDate`
+- `deliveryTime`
+- `address`
+- `notes`
+- `paymentStatus`
+- `orderStatus`
+
+If n8n is not configured, checkout runs in demo mode and still creates a confirmation/order ID.
 
 ## Google Sheets structure
 
@@ -69,3 +77,7 @@ Customer ID, Name, Phone, Email, Number of Orders
 
 ### Dashboard
 Optional formulas/charts for today's count, today's unpaid count and today's order value.
+
+## Next integration step
+
+The customer order path is now prepared for the real n8n → Google Sheets workflow. The Brenda dashboard is still using demo/local state; its create, edit, mark-paid, status-change and read operations will be connected to n8n/Google Sheets next.
