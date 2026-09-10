@@ -116,7 +116,7 @@ export default function Storefront() {
                 </div>)}
               </div>
               <div className="cart-total"><span>Total</span><strong>{money(total)}</strong></div>
-              <Link className="button dark full" href={`/checkout?total=${total}`}>Continue to checkout <ArrowRight size={17}/></Link>
+              <Link className="button dark full" href="/checkout" onClick={() => localStorage.setItem("brendas-bakery-cart", JSON.stringify(cart))}>Continue to checkout <ArrowRight size={17}/></Link>
             </>}
           </aside>
         </div>
