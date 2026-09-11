@@ -1,24 +1,48 @@
- "use client";
+"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ShoppingBag, Sparkles, Minus, Plus, X } from "lucide-react";
+import { ArrowRight, ShoppingBag, Sparkles, Minus, Plus, X, Trash2 } from "lucide-react";
 import { products } from "@/lib/demo-data";
 
 type CartLine = { productId: string; quantity: number };
 
+const CART_KEY = "brendas-bakery-cart";
 const money = (n: number) => `KSh ${n.toLocaleString()}`;
 
 export default function Storefront() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [openCart, setOpenCart] = useState(false);
   const [category, setCategory] = useState("All");
+  const [cartReady, setCartReady] = useState(false);
 
   const categories = ["All", ...Array.from(new Set(products.map(p => p.category)))];
   const visible = category === "All" ? products : products.filter(p => p.category === category);
-  const cartDetails = cart.map(line => ({ ...line, product: products.find(p => p.id === line.productId)! }));
-  const total = cartDetails.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
+  const cartDetails = cart
+    .map(line => ({ ...line, product: products.find(p => p.id === line.productId) }))
+    .filter(line => line.product);
+  const total = cartDetails.reduce((sum, line) => sum + line.product!.price * line.quantity, 0);
   const count = cart.reduce((sum, line) => sum + line.quantity, 0);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(CART_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setCart(parsed.filter((line) => line && typeof line.productId === "string" && Number.isInteger(line.quantity) && line.quantity > 0));
+        }
+      }
+    } catch {
+      localStorage.removeItem(CART_KEY);
+    } finally {
+      setCartReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (cartReady) localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  }, [cart, cartReady]);
 
   function add(id: string) {
     setCart(current => {
@@ -27,8 +51,13 @@ export default function Storefront() {
       return [...current, { productId: id, quantity: 1 }];
     });
   }
+
   function change(id: string, delta: number) {
     setCart(current => current.map(x => x.productId === id ? { ...x, quantity: x.quantity + delta } : x).filter(x => x.quantity > 0));
+  }
+
+  function clearCart() {
+    setCart([]);
   }
 
   return (
@@ -98,25 +127,31 @@ export default function Storefront() {
 
       <footer className="footer">
         <div><div className="brand"><span>Brenda&apos;s</span><strong>Bakery</strong></div><p>Small-batch bakes for everyday celebrations.</p></div>
-        <div className="footer-links"><a href="#menu">Menu</a><a href="/dashboard">Order Book</a><a href="/order/track">Track an order</a></div>
+        <div className="footer-links"><a href="#menu">Menu</a><Link href="/dashboard">Order Book</Link><Link href="/order/track">Track an order</Link></div>
         <div className="footer-small">© 2026 Brenda&apos;s Bakery</div>
       </footer>
 
       {openCart && (
         <div className="overlay" onClick={() => setOpenCart(false)}>
           <aside className="cart-panel" onClick={e => e.stopPropagation()}>
-            <div className="cart-head"><h2>Your order</h2><button onClick={() => setOpenCart(false)}><X/></button></div>
+            <div className="cart-head">
+              <h2>Your order</h2>
+              <button onClick={() => setOpenCart(false)} aria-label="Close cart"><X/></button>
+            </div>
             {cartDetails.length === 0 ? <div className="empty-cart"><ShoppingBag size={32}/><p>Your basket is waiting.</p></div> : <>
               <div className="cart-lines">
                 {cartDetails.map(line => <div className="cart-line" key={line.productId}>
-                  <img src={line.product.image} alt=""/>
-                  <div className="cart-line-main"><strong>{line.product.name}</strong><span>{money(line.product.price)}</span>
-                    <div className="qty"><button onClick={() => change(line.productId, -1)}><Minus size={14}/></button><span>{line.quantity}</span><button onClick={() => change(line.productId, 1)}><Plus size={14}/></button></div>
+                  <img src={line.product!.image} alt=""/>
+                  <div className="cart-line-main"><strong>{line.product!.name}</strong><span>{money(line.product!.price)}</span>
+                    <div className="qty"><button onClick={() => change(line.productId, -1)} aria-label={`Decrease ${line.product!.name}`}><Minus size={14}/></button><span>{line.quantity}</span><button onClick={() => change(line.productId, 1)} aria-label={`Increase ${line.product!.name}`}><Plus size={14}/></button></div>
                   </div>
                 </div>)}
               </div>
               <div className="cart-total"><span>Total</span><strong>{money(total)}</strong></div>
-              <Link className="button dark full" href="/checkout" onClick={() => localStorage.setItem("brendas-bakery-cart", JSON.stringify(cart))}>Continue to checkout <ArrowRight size={17}/></Link>
+              <div className="cart-actions">
+                <button className="clear-cart" onClick={clearCart}><Trash2 size={15}/> Clear</button>
+                <Link className="button dark full" href="/checkout">Continue to checkout <ArrowRight size={17}/></Link>
+              </div>
             </>}
           </aside>
         </div>
