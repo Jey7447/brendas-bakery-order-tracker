@@ -39,11 +39,60 @@ function formatDate(value?: string) {
     : date.toLocaleDateString("en-KE", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 }
 
+function findProduct(name?: string, productId?: string) {
+  if (productId) {
+    const byId = products.find(product => product.id === productId);
+    if (byId) return byId;
+  }
+
+  const normalizedName = String(name || "").trim().toLowerCase();
+  if (!normalizedName) return undefined;
+
+  return products.find(product => product.name.trim().toLowerCase() === normalizedName);
+}
+
 function normaliseOrder(value: RawOrder): Order {
+  const rawItems = value.items ?? value["Items"];
+  let items: OrderItem[] = [];
+
+  if (Array.isArray(rawItems)) {
+    items = rawItems as OrderItem[];
+  } else if (typeof rawItems === "string") {
+    items = rawItems
+      .split(";")
+      .map(item => item.trim())
+      .filter(Boolean)
+      .map(item => {
+        const match = item.match(/^(.*?)\s*[×x]\s*(\d+)$/);
+        const name = match ? match[1].trim() : item;
+        const quantity = match ? Number(match[2]) : 1;
+        const product = findProduct(name);
+
+        return {
+          productId: product?.id,
+          name,
+          quantity,
+          unitPrice: product?.price || 0
+        };
+      });
+  }
+
+  items = items.map(item => {
+    const product = findProduct(item.name, item.productId);
+
+    return {
+      ...item,
+      productId: item.productId || product?.id,
+      name: item.name || product?.name || "Bakery item",
+      quantity: Number(item.quantity || 0),
+      unitPrice: Number(item.unitPrice || product?.price || 0)
+    };
+  });
+
   return {
     orderId: String(value.orderId || value["Order ID"] || ""),
     customerName: String(value.customerName || value["Customer Name"] || ""),
-    items: value.items || (Array.isArray(value["Items"]) ? value["Items"] as OrderItem[] : []),
+    items,
     total: Number(value.total ?? value["Total"] ?? 0),
     deliveryDate: String(value.deliveryDate || value["Delivery Date"] || ""),
     deliveryTime: String(value.deliveryTime || value["Delivery Time"] || ""),
@@ -158,13 +207,13 @@ export default function TrackOrderPage() {
                 <h3>What&apos;s in the box?</h3>
                 <div className="track-items">
                   {order.items?.length ? order.items.map((item, index) => {
-                    const product = products.find(p => p.id === item.productId);
+                    const product = findProduct(item.name, item.productId);
                     const quantity = Number(item.quantity || 0);
-                    const unitPrice = Number(item.unitPrice || 0);
+                    const unitPrice = Number(item.unitPrice || product?.price || 0);
                     return (
                       <div className="track-item" key={`${item.productId || item.name}-${index}`}>
                         <div className="track-item-image">{product ? <img src={product.image} alt="" /> : <ShoppingBag size={18} />}</div>
-                        <div><strong>{item.name || "Bakery item"}</strong><span>Qty {quantity}</span></div>
+                        <div><strong>{item.name || product?.name || "Bakery item"}</strong><span>Qty {quantity}</span></div>
                         <strong>{money(unitPrice * quantity)}</strong>
                       </div>
                     );
