@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./calendar-polish.css";
+import "./storefront-polish.css";
 
 export const metadata: Metadata = {
   title: "Brenda's Bakery",
