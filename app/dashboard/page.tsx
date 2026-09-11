@@ -92,6 +92,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   const TODAY = getToday();
 
@@ -138,7 +139,7 @@ export default function Dashboard() {
   const todayRevenue = orders.filter((o) => o.deliveryDate === TODAY).reduce((s, o) => s + o.total, 0);
 
   async function markPaid(id: string) {
-    if (payingId) return;
+    if (payingId || savingId) return;
 
     try {
       setPayingId(id);
@@ -161,6 +162,46 @@ export default function Dashboard() {
       setLoadError(error instanceof Error ? error.message : "Could not mark the order as paid.");
     } finally {
       setPayingId(null);
+    }
+  }
+
+  async function saveOrderChanges() {
+    if (!editing || savingId) return;
+
+    const orderToSave = editing;
+
+    try {
+      setSavingId(orderToSave.id);
+      setLoadError("");
+
+      const response = await fetch("/api/dashboard/update-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: orderToSave.id,
+          customerName: orderToSave.customerName,
+          phone: orderToSave.phone,
+          deliveryDate: orderToSave.deliveryDate,
+          deliveryTime: orderToSave.deliveryTime,
+          address: orderToSave.address,
+          paymentStatus: orderToSave.paymentStatus,
+          orderStatus: orderToSave.orderStatus,
+          notes: orderToSave.notes || "",
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data?.success === false || data?.ok === false) {
+        throw new Error(data?.message || "Could not save the order changes.");
+      }
+
+      setOrders((prev) => prev.map((o) => (o.id === orderToSave.id ? orderToSave : o)));
+      setEditing(null);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Could not save the order changes.");
+    } finally {
+      setSavingId(null);
     }
   }
 
@@ -213,7 +254,7 @@ export default function Dashboard() {
                 <div className="order-status"><span className={`status-dot ${order.orderStatus.toLowerCase()}`}></span>{statusLabel[order.orderStatus]}</div>
                 <div className={`payment-pill ${order.paymentStatus.toLowerCase()}`}>{order.paymentStatus === "PAID" ? <Check size={13} /> : <CircleDollarSign size={13} />} {order.paymentStatus === "PAID" ? "Paid" : "Unpaid"}</div>
                 <div className="order-total">{money(order.total)}</div>
-                {order.paymentStatus === "UNPAID" && <button className="pay-button" disabled={payingId === order.id} onClick={() => markPaid(order.id)}>{payingId === order.id ? "Saving…" : "Mark paid"}</button>}
+                {order.paymentStatus === "UNPAID" && <button className="pay-button" disabled={payingId === order.id || savingId === order.id} onClick={() => markPaid(order.id)}>{payingId === order.id ? "Saving…" : "Mark paid"}</button>}
                 <button className="row-more" onClick={() => setEditing(order)}><ChevronRight size={18} /></button>
               </article>
             ))}
@@ -222,8 +263,8 @@ export default function Dashboard() {
         </section>
       </main>
 
-      {editing && <div className="overlay" onClick={() => setEditing(null)}><aside className="edit-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="cart-head"><div><div className="eyebrow">ORDER {editing.id}</div><h2>{editing.customerName}</h2></div><button onClick={() => setEditing(null)}><X /></button></div>
+      {editing && <div className="overlay" onClick={() => !savingId && setEditing(null)}><aside className="edit-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="cart-head"><div><div className="eyebrow">ORDER {editing.id}</div><h2>{editing.customerName}</h2></div><button disabled={Boolean(savingId)} onClick={() => setEditing(null)}><X /></button></div>
         <div className="edit-body">
           <label>Customer name<input value={editing.customerName} onChange={(e) => setEditing({ ...editing, customerName: e.target.value })} /></label>
           <label>Phone<input value={editing.phone} onChange={(e) => setEditing({ ...editing, phone: e.target.value })} /></label>
@@ -232,7 +273,7 @@ export default function Dashboard() {
           <div className="two"><label>Payment<select value={editing.paymentStatus} onChange={(e) => setEditing({ ...editing, paymentStatus: e.target.value as Order["paymentStatus"] })}><option>UNPAID</option><option>PAID</option></select></label><label>Status<select value={editing.orderStatus} onChange={(e) => setEditing({ ...editing, orderStatus: e.target.value as OrderStatus })}>{Object.keys(statusLabel).map((s) => <option key={s}>{s}</option>)}</select></label></div>
           <label>Notes<textarea value={editing.notes || ""} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} /></label>
         </div>
-        <div className="edit-footer"><button className="button light" onClick={() => setEditing(null)}>Cancel</button><button className="button dark" onClick={() => { setOrders((prev) => prev.map((o) => o.id === editing.id ? editing : o)); setEditing(null); }}>Save changes <Check size={16} /></button></div>
+        <div className="edit-footer"><button className="button light" disabled={Boolean(savingId)} onClick={() => setEditing(null)}>Cancel</button><button className="button dark" disabled={savingId === editing.id} onClick={saveOrderChanges}>{savingId === editing.id ? "Saving…" : <>Save changes <Check size={16} /></>}</button></div>
       </aside></div>}
     </div>
   );
