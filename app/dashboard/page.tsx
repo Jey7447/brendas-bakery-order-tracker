@@ -93,6 +93,7 @@ export default function Dashboard() {
   const [loadError, setLoadError] = useState("");
   const [payingId, setPayingId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [statusSavingId, setStatusSavingId] = useState<string | null>(null);
 
   const TODAY = getToday();
 
@@ -139,7 +140,7 @@ export default function Dashboard() {
   const todayRevenue = orders.filter((o) => o.deliveryDate === TODAY).reduce((s, o) => s + o.total, 0);
 
   async function markPaid(id: string) {
-    if (payingId || savingId) return;
+    if (payingId || savingId || statusSavingId) return;
 
     try {
       setPayingId(id);
@@ -162,6 +163,49 @@ export default function Dashboard() {
       setLoadError(error instanceof Error ? error.message : "Could not mark the order as paid.");
     } finally {
       setPayingId(null);
+    }
+  }
+
+  async function updateOrderStatus(id: string, nextStatus: OrderStatus) {
+    if (statusSavingId || payingId || savingId) return;
+
+    const orderToSave = orders.find((order) => order.id === id);
+    if (!orderToSave || orderToSave.orderStatus === nextStatus) return;
+
+    const previousStatus = orderToSave.orderStatus;
+
+    try {
+      setStatusSavingId(id);
+      setLoadError("");
+
+      const response = await fetch("/api/dashboard/update-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: orderToSave.id,
+          customerName: orderToSave.customerName,
+          phone: orderToSave.phone,
+          deliveryDate: orderToSave.deliveryDate,
+          deliveryTime: orderToSave.deliveryTime,
+          address: orderToSave.address,
+          paymentStatus: orderToSave.paymentStatus,
+          orderStatus: nextStatus,
+          notes: orderToSave.notes || "",
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data?.success === false || data?.ok === false) {
+        throw new Error(data?.message || "Could not update the order status.");
+      }
+
+      setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, orderStatus: nextStatus } : o)));
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Could not update the order status.");
+      setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, orderStatus: previousStatus } : o)));
+    } finally {
+      setStatusSavingId(null);
     }
   }
 
@@ -251,11 +295,22 @@ export default function Dashboard() {
               <article className={`order-row ${order.paymentStatus === "UNPAID" && order.deliveryDate === TODAY ? "needs-payment" : ""}`} key={`${order.id}-${order.rowNumber ?? index}`}>
                 <div className="order-time"><strong>{order.deliveryTime}</strong><span>{order.deliveryDate === TODAY ? "Today" : order.deliveryDate}</span></div>
                 <div className="order-customer"><strong>{order.customerName}</strong><span>{order.id} · {order.items.map((i) => `${i.name} ×${i.quantity}`).join(", ")}</span></div>
-                <div className="order-status"><span className={`status-dot ${order.orderStatus.toLowerCase()}`}></span>{statusLabel[order.orderStatus]}</div>
+                <div className="order-status">
+                  <span className={`status-dot ${order.orderStatus.toLowerCase()}`}></span>
+                  <select
+                    aria-label={`Change status for ${order.customerName}`}
+                    value={order.orderStatus}
+                    disabled={statusSavingId === order.id || Boolean(payingId) || Boolean(savingId)}
+                    onChange={(e) => updateOrderStatus(order.id, e.target.value as OrderStatus)}
+                    style={{ border: "0", background: "transparent", outline: "none", fontSize: "11px", color: "inherit", fontWeight: 600, padding: "2px 18px 2px 0", cursor: statusSavingId === order.id ? "wait" : "pointer" }}
+                  >
+                    {Object.entries(statusLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
                 <div className={`payment-pill ${order.paymentStatus.toLowerCase()}`}>{order.paymentStatus === "PAID" ? <Check size={13} /> : <CircleDollarSign size={13} />} {order.paymentStatus === "PAID" ? "Paid" : "Unpaid"}</div>
                 <div className="order-total">{money(order.total)}</div>
-                {order.paymentStatus === "UNPAID" && <button className="pay-button" disabled={payingId === order.id || savingId === order.id} onClick={() => markPaid(order.id)}>{payingId === order.id ? "Saving…" : "Mark paid"}</button>}
-                <button className="row-more" onClick={() => setEditing(order)}><ChevronRight size={18} /></button>
+                {order.paymentStatus === "UNPAID" && <button className="pay-button" disabled={payingId === order.id || savingId === order.id || statusSavingId === order.id} onClick={() => markPaid(order.id)}>{payingId === order.id ? "Saving…" : "Mark paid"}</button>}
+                <button className="row-more" disabled={Boolean(statusSavingId)} onClick={() => setEditing(order)}><ChevronRight size={18} /></button>
               </article>
             ))}
             {sorted.length === 0 && <div className="no-orders"><CalendarDays size={28} /><strong>{loading ? "Loading orders…" : "No orders here."}</strong><span>{loading ? "Connecting to Google Sheets." : "Try another view or search."}</span></div>}
