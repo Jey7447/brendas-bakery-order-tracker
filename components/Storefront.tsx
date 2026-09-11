@@ -15,6 +15,7 @@ export default function Storefront() {
   const [openCart, setOpenCart] = useState(false);
   const [category, setCategory] = useState("All");
   const [cartReady, setCartReady] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<(typeof products)[number] | null>(null);
 
   const categories = ["All", ...Array.from(new Set(products.map(p => p.category)))];
   const visible = category === "All" ? products : products.filter(p => p.category === category);
@@ -60,6 +61,12 @@ export default function Storefront() {
     setCart([]);
   }
 
+  function addFromDetails(id: string) {
+    add(id);
+    setSelectedProduct(null);
+    setOpenCart(true);
+  }
+
   return (
     <main className="site-shell">
       <header className="nav">
@@ -101,15 +108,24 @@ export default function Storefront() {
             {categories.map(c => <button key={c} className={category === c ? "active" : ""} onClick={() => setCategory(c)}>{c}</button>)}
           </div>
         </div>
+        <p className="menu-hint">Tap a bake to see what&apos;s inside, who it&apos;s for and what to expect.</p>
         <div className="product-grid">
           {visible.map((p, i) => (
-            <article className="product-card" key={p.id}>
-              <div className="product-image"><img src={p.image} alt={p.name}/><span>0{i+1}</span></div>
+            <article
+              className="product-card product-card-clickable"
+              key={p.id}
+              onClick={() => setSelectedProduct(p)}
+              onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedProduct(p); } }}
+              tabIndex={0}
+              role="button"
+              aria-label={`View details for ${p.name}`}
+            >
+              <div className="product-image"><img src={p.image} alt={p.name}/><span>0{i+1}</span><div className="product-view">View details <ArrowRight size={14}/></div></div>
               <div className="product-info">
                 <div><div className="product-category">{p.category}</div><h3>{p.name}</h3></div>
                 <strong>{money(p.price)}</strong>
               </div>
-              <button className="add-button" onClick={() => { add(p.id); setOpenCart(true); }}>Add to order <Plus size={16}/></button>
+              <button className="add-button" onClick={(event) => { event.stopPropagation(); add(p.id); setOpenCart(true); }}>Add to order <Plus size={16}/></button>
             </article>
           ))}
         </div>
@@ -130,6 +146,27 @@ export default function Storefront() {
         <div className="footer-links"><a href="#menu">Menu</a><Link href="/dashboard">Order Book</Link><Link href="/order/track">Track an order</Link></div>
         <div className="footer-small">© 2026 Brenda&apos;s Bakery</div>
       </footer>
+
+      {selectedProduct && (
+        <div className="product-modal-overlay" onClick={() => setSelectedProduct(null)}>
+          <section className="product-modal" onClick={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${selectedProduct.name} details`}>
+            <button className="product-modal-close" onClick={() => setSelectedProduct(null)} aria-label="Close product details"><X size={20}/></button>
+            <div className="product-modal-image"><img src={selectedProduct.image} alt={selectedProduct.name}/></div>
+            <div className="product-modal-content">
+              <div className="eyebrow">{selectedProduct.category}</div>
+              <h2>{selectedProduct.name}</h2>
+              <div className="product-modal-price">{money(selectedProduct.price)}</div>
+              <p className="product-description">{selectedProduct.description}</p>
+              <div className="product-facts">
+                <div><span>GOOD TO KNOW</span><p>{selectedProduct.details}</p></div>
+                <div><span>SIZE / SERVING</span><p>{selectedProduct.serving}</p></div>
+                <div><span>ORDER NOTE</span><p>{selectedProduct.note}</p></div>
+              </div>
+              <button className="button dark product-modal-add" onClick={() => addFromDetails(selectedProduct.id)}>Add to order <Plus size={17}/></button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {openCart && (
         <div className="overlay" onClick={() => setOpenCart(false)}>
