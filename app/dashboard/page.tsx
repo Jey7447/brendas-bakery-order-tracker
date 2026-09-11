@@ -238,6 +238,35 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-shell">
+      <style jsx>{`
+        .bakery-calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); border-top:1px solid var(--line); border-left:1px solid var(--line); }
+        .bakery-calendar-heading { padding:11px 8px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); font-size:9px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+        .bakery-calendar-day { min-height:105px; padding:10px; text-align:left; vertical-align:top; border:0; border-right:1px solid var(--line); border-bottom:1px solid var(--line); background:var(--paper); cursor:pointer; outline:none; }
+        .bakery-calendar-day.selected { background:#f0e1d6; outline:2px solid var(--rust); outline-offset:-2px; }
+        .bakery-calendar-day.today { background:#fff9f4; }
+        .bakery-calendar-day.today.selected { background:#f0e1d6; }
+        .bakery-calendar-day.outside { opacity:.42; }
+        .bakery-calendar-number { display:inline-grid; place-items:center; width:25px; height:25px; border-radius:50%; font-size:11px; font-weight:800; }
+        .bakery-calendar-day.today .bakery-calendar-number { background:var(--ink); color:white; }
+        .bakery-calendar-badges { margin-top:8px; display:grid; gap:5px; }
+        .bakery-calendar-badges span { display:inline-flex; width:fit-content; padding:4px 6px; border-radius:99px; background:var(--ink); color:white; font-size:8px; font-weight:800; }
+        .bakery-calendar-badges .unpaid-badge { background:#f8e4d6; color:#9c3e16; }
+        .calendar-order-row { width:100%; display:grid; grid-template-columns:75px 1fr auto auto; align-items:center; gap:14px; padding:14px 18px; border:0; border-bottom:1px solid var(--line); background:transparent; text-align:left; }
+        .calendar-order-row:hover { background:#fff9f4; }
+        .calendar-order-row > span:nth-child(2) > strong { display:block; font-size:12px; }
+        .calendar-order-row > span:nth-child(2) > small { display:block; margin-top:3px; color:var(--muted); font-size:9px; }
+        @media (max-width:700px) {
+          .orders-head { align-items:flex-start; gap:15px; }
+          .orders-head > div:last-child { flex-shrink:0; }
+          .bakery-calendar-day { min-height:78px; padding:6px; }
+          .bakery-calendar-heading { padding:8px 4px; font-size:8px; }
+          .bakery-calendar-badges span { font-size:7px; padding:3px 4px; }
+          .bakery-calendar-badges .unpaid-badge { display:none; }
+          .calendar-order-row { grid-template-columns:52px 1fr auto; gap:9px; padding:12px; }
+          .calendar-order-row > strong:last-child { display:none; }
+          .calendar-order-row .payment-pill { justify-self:end; }
+        }
+      `}</style>
       <aside className={`sidebar ${mobileNav ? "open" : ""}`}>
         <div className="dashboard-brand"><span>Brenda&apos;s</span><strong>Bakery</strong></div>
         <div className="side-label">WORKSPACE</div>
@@ -261,22 +290,12 @@ export default function Dashboard() {
 
         {calendarView && <section className="orders-card" style={{ overflow: "visible" }}>
           <div className="orders-head">
-            <div>
-              <div className="eyebrow">DELIVERY CALENDAR</div>
-              <h2>{formatMonthTitle(calendarMonth)}</h2>
-              <p>Click a date to see that day&apos;s orders.</p>
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button className="button light small" onClick={() => openCalendar(TODAY)}>Today</button>
-              <button className="icon-btn" aria-label="Previous month" onClick={() => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}>‹</button>
-              <button className="icon-btn" aria-label="Next month" onClick={() => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}>›</button>
-            </div>
+            <div><div className="eyebrow">DELIVERY CALENDAR</div><h2>{formatMonthTitle(calendarMonth)}</h2><p>Click a date to see that day&apos;s orders.</p></div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}><button className="button light small" onClick={() => openCalendar(TODAY)}>Today</button><button className="icon-btn" aria-label="Previous month" onClick={() => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}>‹</button><button className="icon-btn" aria-label="Next month" onClick={() => setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}>›</button></div>
           </div>
           <div style={{ padding: "0 25px 25px" }}>
             <div className="bakery-calendar-grid">
-              {[
-                "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
-              ].map((day) => <div key={day} className="bakery-calendar-heading">{day}</div>)}
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => <div key={day} className="bakery-calendar-heading">{day}</div>)}
               {monthDays.map((day) => {
                 const key = toDateKey(day);
                 const dayOrders = orders.filter((order) => order.deliveryDate === key);
@@ -284,23 +303,12 @@ export default function Dashboard() {
                 const isToday = key === TODAY;
                 const isSelected = key === selectedCalendarDate;
                 const unpaid = dayOrders.filter((order) => order.paymentStatus === "UNPAID").length;
-                return <button key={key} type="button" onClick={() => setSelectedCalendarDate(key)} className={`bakery-calendar-day ${isSelected ? "selected" : ""} ${isToday ? "today" : ""} ${!isCurrentMonth ? "outside" : ""}`}>
-                  <span className="bakery-calendar-number">{day.getDate()}</span>
-                  {dayOrders.length > 0 && <div className="bakery-calendar-badges">
-                    <span>{dayOrders.length} order{dayOrders.length === 1 ? "" : "s"}</span>
-                    {unpaid > 0 && <span className="unpaid-badge">{unpaid} unpaid</span>}
-                  </div>}
-                </button>;
+                return <button key={key} type="button" onClick={() => setSelectedCalendarDate(key)} className={`bakery-calendar-day ${isSelected ? "selected" : ""} ${isToday ? "today" : ""} ${!isCurrentMonth ? "outside" : ""}`}><span className="bakery-calendar-number">{day.getDate()}</span>{dayOrders.length > 0 && <div className="bakery-calendar-badges"><span>{dayOrders.length} order{dayOrders.length === 1 ? "" : "s"}</span>{unpaid > 0 && <span className="unpaid-badge">{unpaid} unpaid</span>}</div>}</button>;
               })}
             </div>
             <div style={{ marginTop: 18, border: "1px solid var(--line)", borderRadius: 10, background: "var(--paper)", overflow: "hidden" }}>
-              <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--line)", display: "flex", justifyContent: "space-between", gap: 15, alignItems: "center" }}>
-                <div><div className="eyebrow">SELECTED DAY</div><strong style={{ display: "block", marginTop: 4, fontFamily: "DM Serif Display", fontSize: 23 }}>{new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(parseLocalDate(selectedCalendarDate))}</strong></div>
-                <span style={{ fontSize: 10, color: "var(--muted)" }}>{selectedDayOrders.length} order{selectedDayOrders.length === 1 ? "" : "s"}</span>
-              </div>
-              {selectedDayOrders.length > 0 ? selectedDayOrders.map((order) => <button key={`${order.id}-${order.rowNumber ?? order.deliveryTime}`} type="button" onClick={() => setViewing(order)} className="calendar-order-row">
-                <strong>{order.deliveryTime}</strong><span><strong>{order.customerName}</strong><small>{order.items.map((item) => `${item.name} ×${item.quantity}`).join(", ")}</small></span><span className={`payment-pill ${order.paymentStatus.toLowerCase()}`}>{order.paymentStatus === "PAID" ? "Paid" : "Unpaid"}</span><strong>{money(order.total)}</strong>
-              </button>) : <div style={{ padding: 30, textAlign: "center", color: "var(--muted)", fontSize: 11 }}>No orders scheduled for this date.</div>}
+              <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--line)", display: "flex", justifyContent: "space-between", gap: 15, alignItems: "center" }}><div><div className="eyebrow">SELECTED DAY</div><strong style={{ display: "block", marginTop: 4, fontFamily: "DM Serif Display", fontSize: 23 }}>{new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(parseLocalDate(selectedCalendarDate))}</strong></div><span style={{ fontSize: 10, color: "var(--muted)" }}>{selectedDayOrders.length} order{selectedDayOrders.length === 1 ? "" : "s"}</span></div>
+              {selectedDayOrders.length > 0 ? selectedDayOrders.map((order) => <button key={`${order.id}-${order.rowNumber ?? order.deliveryTime}`} type="button" onClick={() => setViewing(order)} className="calendar-order-row"><strong>{order.deliveryTime}</strong><span><strong>{order.customerName}</strong><small>{order.items.map((item) => `${item.name} ×${item.quantity}`).join(", ")}</small></span><span className={`payment-pill ${order.paymentStatus.toLowerCase()}`}>{order.paymentStatus === "PAID" ? "Paid" : "Unpaid"}</span><strong>{money(order.total)}</strong></button>) : <div style={{ padding: 30, textAlign: "center", color: "var(--muted)", fontSize: 11 }}>No orders scheduled for this date.</div>}
             </div>
           </div>
         </section>}
@@ -331,17 +339,13 @@ export default function Dashboard() {
         </section>}
       </main>
 
-      {viewing && <div className="overlay" onClick={() => !payingId && setViewing(null)}><aside className="edit-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="cart-head"><div><div className="eyebrow">ORDER {viewing.id}</div><h2>{viewing.customerName}</h2></div><button disabled={Boolean(payingId)} onClick={() => setViewing(null)} aria-label="Close order details"><X /></button></div>
-        <div className="edit-body" style={{ display: "grid", gap: 0 }}>
-          <div style={{ display: "grid", gap: 5, paddingBottom: 18, borderBottom: "1px solid var(--line)" }}><span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", letterSpacing: ".08em" }}>CUSTOMER</span><strong style={{ fontSize: 15 }}>{viewing.customerName}</strong><span style={{ fontSize: 12, color: "var(--muted)" }}>{viewing.phone}</span><span style={{ fontSize: 12, color: "var(--muted)" }}>{viewing.email}</span></div>
-          <div style={{ display: "grid", gap: 10, padding: "18px 0", borderBottom: "1px solid var(--line)" }}><span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", letterSpacing: ".08em" }}>ITEMS</span>{viewing.items.map((item, index) => <div key={`${item.name}-${index}`} style={{ display: "flex", justifyContent: "space-between", gap: 15, alignItems: "center" }}><span style={{ fontSize: 12 }}>{item.name}</span><strong style={{ fontSize: 12, whiteSpace: "nowrap" }}>× {item.quantity}</strong></div>)}<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, marginTop: 2, borderTop: "1px dashed var(--line)" }}><span style={{ fontSize: 11, fontWeight: 700 }}>Order total</span><strong style={{ fontFamily: "DM Serif Display", fontSize: 24 }}>{money(viewing.total)}</strong></div></div>
-          <div style={{ display: "grid", gap: 5, padding: "18px 0", borderBottom: "1px solid var(--line)" }}><span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", letterSpacing: ".08em" }}>DELIVERY</span><strong style={{ fontSize: 13 }}>{viewing.deliveryDate === TODAY ? "Today" : viewing.deliveryDate}</strong><span style={{ fontSize: 12, color: "var(--muted)" }}>{viewing.deliveryTime}</span><span style={{ fontSize: 12, lineHeight: 1.6 }}>{viewing.address}</span></div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, padding: "18px 0", borderBottom: "1px solid var(--line)" }}><div style={{ display: "grid", gap: 6 }}><span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", letterSpacing: ".08em" }}>PAYMENT</span><div className={`payment-pill ${viewing.paymentStatus.toLowerCase()}`} style={{ width: "fit-content" }}>{viewing.paymentStatus === "PAID" ? <Check size={13} /> : <CircleDollarSign size={13} />}{viewing.paymentStatus === "PAID" ? "Paid" : "Unpaid"}</div></div><div style={{ display: "grid", gap: 6 }}><span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", letterSpacing: ".08em" }}>STATUS</span><span style={{ fontSize: 12, fontWeight: 700 }}>{statusLabel[viewing.orderStatus]}</span></div></div>
-          <div style={{ display: "grid", gap: 6, paddingTop: 18 }}><span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", letterSpacing: ".08em" }}>NOTES</span><p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: viewing.notes ? "var(--ink)" : "var(--muted)" }}>{viewing.notes || "No notes added for this order."}</p></div>
-        </div>
-        <div className="edit-footer"><button className="button light" disabled={Boolean(payingId)} onClick={() => setViewing(null)}>Close</button>{viewing.paymentStatus === "UNPAID" && <button className="button light" disabled={payingId === viewing.id} onClick={() => markPaid(viewing.id)}>{payingId === viewing.id ? "Saving…" : <>Mark paid <Check size={16} /></>}</button>}<button className="button dark" disabled={Boolean(payingId)} onClick={() => { setEditing(viewing); setViewing(null); }}>Edit order <ChevronRight size={16} /></button></div>
-      </aside></div>}
+      {viewing && <div className="overlay" onClick={() => !payingId && setViewing(null)}><aside className="edit-panel" onClick={(e) => e.stopPropagation()}><div className="cart-head"><div><div className="eyebrow">ORDER {viewing.id}</div><h2>{viewing.customerName}</h2></div><button disabled={Boolean(payingId)} onClick={() => setViewing(null)} aria-label="Close order details"><X /></button></div><div className="edit-body" style={{ display: "grid", gap: 0 }}>
+        <div style={{ display: "grid", gap: 5, paddingBottom: 18, borderBottom: "1px solid var(--line)" }}><span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", letterSpacing: ".08em" }}>CUSTOMER</span><strong style={{ fontSize: 15 }}>{viewing.customerName}</strong><span style={{ fontSize: 12, color: "var(--muted)" }}>{viewing.phone}</span><span style={{ fontSize: 12, color: "var(--muted)" }}>{viewing.email}</span></div>
+        <div style={{ display: "grid", gap: 10, padding: "18px 0", borderBottom: "1px solid var(--line)" }}><span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", letterSpacing: ".08em" }}>ITEMS</span>{viewing.items.map((item, index) => <div key={`${item.name}-${index}`} style={{ display: "flex", justifyContent: "space-between", gap: 15, alignItems: "center" }}><span style={{ fontSize: 12 }}>{item.name}</span><strong style={{ fontSize: 12, whiteSpace: "nowrap" }}>× {item.quantity}</strong></div>)}<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 10, marginTop: 2, borderTop: "1px dashed var(--line)" }}><span style={{ fontSize: 11, fontWeight: 700 }}>Order total</span><strong style={{ fontFamily: "DM Serif Display", fontSize: 24 }}>{money(viewing.total)}</strong></div></div>
+        <div style={{ display: "grid", gap: 5, padding: "18px 0", borderBottom: "1px solid var(--line)" }}><span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", letterSpacing: ".08em" }}>DELIVERY</span><strong style={{ fontSize: 13 }}>{viewing.deliveryDate === TODAY ? "Today" : viewing.deliveryDate}</strong><span style={{ fontSize: 12, color: "var(--muted)" }}>{viewing.deliveryTime}</span><span style={{ fontSize: 12, lineHeight: 1.6 }}>{viewing.address}</span></div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, padding: "18px 0", borderBottom: "1px solid var(--line)" }}><div style={{ display: "grid", gap: 6 }}><span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", letterSpacing: ".08em" }}>PAYMENT</span><div className={`payment-pill ${viewing.paymentStatus.toLowerCase()}`} style={{ width: "fit-content" }}>{viewing.paymentStatus === "PAID" ? <Check size={13} /> : <CircleDollarSign size={13} />}{viewing.paymentStatus === "PAID" ? "Paid" : "Unpaid"}</div></div><div style={{ display: "grid", gap: 6 }}><span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", letterSpacing: ".08em" }}>STATUS</span><span style={{ fontSize: 12, fontWeight: 700 }}>{statusLabel[viewing.orderStatus]}</span></div></div>
+        <div style={{ display: "grid", gap: 6, paddingTop: 18 }}><span style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", letterSpacing: ".08em" }}>NOTES</span><p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: viewing.notes ? "var(--ink)" : "var(--muted)" }}>{viewing.notes || "No notes added for this order."}</p></div>
+      </div><div className="edit-footer"><button className="button light" disabled={Boolean(payingId)} onClick={() => setViewing(null)}>Close</button>{viewing.paymentStatus === "UNPAID" && <button className="button light" disabled={payingId === viewing.id} onClick={() => markPaid(viewing.id)}>{payingId === viewing.id ? "Saving…" : <>Mark paid <Check size={16} /></>}</button>}<button className="button dark" disabled={Boolean(payingId)} onClick={() => { setEditing(viewing); setViewing(null); }}>Edit order <ChevronRight size={16} /></button></div></aside></div>}
 
       {editing && <div className="overlay" onClick={() => !savingId && setEditing(null)}><aside className="edit-panel" onClick={(e) => e.stopPropagation()}><div className="cart-head"><div><div className="eyebrow">ORDER {editing.id}</div><h2>{editing.customerName}</h2></div><button disabled={Boolean(savingId)} onClick={() => setEditing(null)}><X /></button></div><div className="edit-body">
         <label>Customer name<input value={editing.customerName} onChange={(e) => setEditing({ ...editing, customerName: e.target.value })} /></label><label>Phone<input value={editing.phone} onChange={(e) => setEditing({ ...editing, phone: e.target.value })} /></label><div className="two"><label>Delivery date<input type="date" value={editing.deliveryDate} onChange={(e) => setEditing({ ...editing, deliveryDate: e.target.value })} /></label><label>Time<input type="time" value={editing.deliveryTime} onChange={(e) => setEditing({ ...editing, deliveryTime: e.target.value })} /></label></div><label>Address<textarea value={editing.address} onChange={(e) => setEditing({ ...editing, address: e.target.value })} /></label><div className="two"><label>Payment<select value={editing.paymentStatus} onChange={(e) => setEditing({ ...editing, paymentStatus: e.target.value as Order["paymentStatus"] })}><option>UNPAID</option><option>PAID</option></select></label><label>Status<select value={editing.orderStatus} onChange={(e) => setEditing({ ...editing, orderStatus: e.target.value as OrderStatus })}>{Object.keys(statusLabel).map((s) => <option key={s}>{s}</option>)}</select></label></div><label>Notes<textarea value={editing.notes || ""} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} /></label>
