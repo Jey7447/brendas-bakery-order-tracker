@@ -27,6 +27,8 @@ type SheetOrder = {
 };
 
 type NewOrderItem = { productId: string; quantity: number };
+type PaymentFilter = "ALL" | "PAID" | "UNPAID";
+type DeliveryFilter = "ALL" | "TODAY" | "UPCOMING";
 
 const statusLabel: Record<OrderStatus, string> = {
   PENDING: "Pending",
@@ -78,6 +80,10 @@ export default function Dashboard() {
   const [addingOrder, setAddingOrder] = useState(false);
   const [newOrder, setNewOrder] = useState({ customerName: "", phone: "", email: "", deliveryDate: getToday(), deliveryTime: "12:00", address: "", notes: "" });
   const [newItems, setNewItems] = useState<NewOrderItem[]>([{ productId: products[0].id, quantity: 1 }]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("ALL");
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | "ALL">("ALL");
+  const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>("ALL");
   const TODAY = getToday();
 
   const loadOrders = useCallback(async () => {
@@ -94,10 +100,15 @@ export default function Dashboard() {
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
+  const activeFilterCount = [paymentFilter !== "ALL", statusFilter !== "ALL", deliveryFilter !== "ALL"].filter(Boolean).length;
+
   const sorted = useMemo(() => [...orders]
     .filter((o) => view === "today" ? o.deliveryDate === TODAY : view === "upcoming" ? o.deliveryDate > TODAY : view === "unpaid" ? o.paymentStatus === "UNPAID" : true)
+    .filter((o) => deliveryFilter === "ALL" ? true : deliveryFilter === "TODAY" ? o.deliveryDate === TODAY : o.deliveryDate > TODAY)
+    .filter((o) => paymentFilter === "ALL" || o.paymentStatus === paymentFilter)
+    .filter((o) => statusFilter === "ALL" || o.orderStatus === statusFilter)
     .filter((o) => `${o.id} ${o.customerName} ${o.phone}`.toLowerCase().includes(query.toLowerCase()))
-    .sort((a, b) => `${a.deliveryDate} ${a.deliveryTime}`.localeCompare(`${b.deliveryDate} ${b.deliveryTime}`)), [orders, view, query, TODAY]);
+    .sort((a, b) => `${a.deliveryDate} ${a.deliveryTime}`.localeCompare(`${b.deliveryDate} ${b.deliveryTime}`)), [orders, view, query, TODAY, paymentFilter, statusFilter, deliveryFilter]);
 
   const todayUnpaid = orders.filter((o) => o.deliveryDate === TODAY && o.paymentStatus === "UNPAID").length;
   const todayCount = orders.filter((o) => o.deliveryDate === TODAY).length;
@@ -106,6 +117,12 @@ export default function Dashboard() {
     const product = products.find((p) => p.id === item.productId);
     return sum + (product?.price || 0) * item.quantity;
   }, 0);
+
+  function resetFilters() {
+    setPaymentFilter("ALL");
+    setStatusFilter("ALL");
+    setDeliveryFilter("ALL");
+  }
 
   function resetNewOrder() {
     setNewOrder({ customerName: "", phone: "", email: "", deliveryDate: TODAY, deliveryTime: "12:00", address: "", notes: "" });
@@ -196,7 +213,15 @@ export default function Dashboard() {
           <div className="stat-card"><span>Today&apos;s order value</span><strong>{loading ? "—" : money(todayRevenue)}</strong><small>Across today&apos;s orders</small></div>
         </section>
         <section className="orders-card">
-          <div className="orders-head"><div><h2>{view === "today" ? "Today" : view === "upcoming" ? "Upcoming" : view === "unpaid" ? "Unpaid orders" : "All orders"}</h2><p>Sorted automatically by soonest delivery.</p></div><div className="order-tools"><div className="search"><Search size={16} /><input placeholder="Search orders..." value={query} onChange={(e) => setQuery(e.target.value)} /></div><button className="filter-button"><Filter size={16} /></button></div></div>
+          <div className="orders-head"><div><h2>{view === "today" ? "Today" : view === "upcoming" ? "Upcoming" : view === "unpaid" ? "Unpaid orders" : "All orders"}</h2><p>Sorted automatically by soonest delivery.</p></div><div className="order-tools" style={{ position: "relative" }}><div className="search"><Search size={16} /><input placeholder="Search orders..." value={query} onChange={(e) => setQuery(e.target.value)} /></div><button className={`filter-button ${activeFilterCount ? "active" : ""}`} aria-label="Open filters" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)}><Filter size={16} />{activeFilterCount > 0 && <span style={{ position: "absolute", top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 99, background: "var(--ink)", color: "white", fontSize: 9, display: "grid", placeItems: "center", fontWeight: 800 }}>{activeFilterCount}</span>}</button>
+            {filtersOpen && <div style={{ position: "absolute", top: 46, right: 0, zIndex: 20, width: 280, background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 10, padding: 16, boxShadow: "0 18px 45px rgba(0,0,0,.14)" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}><strong style={{ fontSize: 13 }}>Filter orders</strong><button aria-label="Close filters" onClick={() => setFiltersOpen(false)} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 2 }}><X size={16} /></button></div>
+              <label style={{ display: "grid", gap: 6, fontSize: 10, fontWeight: 800, marginBottom: 12 }}>PAYMENT<select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value as PaymentFilter)} style={fieldStyle}><option value="ALL">All payments</option><option value="PAID">Paid</option><option value="UNPAID">Unpaid</option></select></label>
+              <label style={{ display: "grid", gap: 6, fontSize: 10, fontWeight: 800, marginBottom: 12 }}>ORDER STATUS<select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as OrderStatus | "ALL")} style={fieldStyle}><option value="ALL">All statuses</option>{Object.entries(statusLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label style={{ display: "grid", gap: 6, fontSize: 10, fontWeight: 800 }}>DELIVERY<select value={deliveryFilter} onChange={(e) => setDeliveryFilter(e.target.value as DeliveryFilter)} style={fieldStyle}><option value="ALL">All delivery dates</option><option value="TODAY">Today</option><option value="UPCOMING">Upcoming</option></select></label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 15, paddingTop: 13, borderTop: "1px solid var(--line)" }}><span style={{ fontSize: 10, color: "var(--muted)" }}>{sorted.length} matching order{sorted.length === 1 ? "" : "s"}</span><button type="button" className="text-link" onClick={resetFilters}>Clear filters</button></div>
+            </div>}
+          </div></div>
           <div className="view-tabs">{([["today", "Today"], ["upcoming", "Upcoming"], ["all", "All orders"], ["unpaid", "Unpaid"]] as const).map(([key, label]) => <button key={key} className={view === key ? "active" : ""} onClick={() => setView(key)}>{label}{key === "unpaid" && <span>{orders.filter((o) => o.paymentStatus === "UNPAID").length}</span>}</button>)}</div>
           <div className="order-list">
             {sorted.map((order, index) => <article className={`order-row ${order.paymentStatus === "UNPAID" && order.deliveryDate === TODAY ? "needs-payment" : ""}`} key={`${order.id}-${order.rowNumber ?? index}`}>
@@ -208,7 +233,7 @@ export default function Dashboard() {
               {order.paymentStatus === "UNPAID" && <button className="pay-button" disabled={payingId === order.id || savingId === order.id || statusSavingId === order.id} onClick={() => markPaid(order.id)}>{payingId === order.id ? "Saving…" : "Mark paid"}</button>}
               <button className="row-more" disabled={Boolean(statusSavingId)} onClick={() => setEditing(order)}><ChevronRight size={18} /></button>
             </article>)}
-            {sorted.length === 0 && <div className="no-orders"><CalendarDays size={28} /><strong>{loading ? "Loading orders…" : "No orders here."}</strong><span>{loading ? "Connecting to Google Sheets." : "Try another view or search."}</span></div>}
+            {sorted.length === 0 && <div className="no-orders"><CalendarDays size={28} /><strong>{loading ? "Loading orders…" : "No orders here."}</strong><span>{loading ? "Connecting to Google Sheets." : "Try another view, search, or filter."}</span></div>}
           </div>
         </section>
       </main>
