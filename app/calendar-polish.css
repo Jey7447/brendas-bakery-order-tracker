@@ -1,0 +1,27 @@
+/* Calendar polish layer for Brenda's Bakery dashboard */
+
+.bakery-calendar-grid { background:#fffdf9; border-radius:10px; overflow:hidden; box-shadow:0 10px 28px rgba(26,3,2,.04); }
+.bakery-calendar-heading { background:#f6eee5; color:#7e6e63; padding:12px 10px; font-size:8px; letter-spacing:.16em; }
+.bakery-calendar-day { min-height:118px; padding:12px; background:#fffdf9; transition:background .18s ease,box-shadow .18s ease,transform .18s ease; }
+.bakery-calendar-day:hover { background:#fff8f1; box-shadow:inset 0 0 0 1px rgba(174,66,22,.16); z-index:1; }
+.bakery-calendar-day.selected { background:#f1dfd2; box-shadow:inset 0 0 0 2px var(--rust); outline:none; }
+.bakery-calendar-day.today { background:#fff7ef; }
+.bakery-calendar-day.today.selected { background:#f1dfd2; }
+.bakery-calendar-number { width:28px; height:28px; font-size:10px; }
+.bakery-calendar-day.today .bakery-calendar-number { box-shadow:0 0 0 4px rgba(26,3,2,.08); }
+.bakery-calendar-badges { margin-top:12px; gap:6px; }
+.bakery-calendar-badges span { border:1px solid rgba(26,3,2,.08); padding:5px 8px; background:var(--ink); box-shadow:0 3px 8px rgba(26,3,2,.08); }
+.bakery-calendar-badges .unpaid-badge { background:#fff0e6; border-color:rgba(174,66,22,.16); color:var(--rust); box-shadow:none; }
+.calendar-order-row { min-height:72px; padding:14px 18px; background:#fffdf9; transition:background .16s ease,padding .16s ease; }
+.calendar-order-row:hover { background:#fff8f1; padding-left:22px; }
+.calendar-order-row > strong:first-child { font-family:"DM Serif Display",serif; font-size:17px; font-weight:400; }
+.calendar-order-row > span:nth-child(2) > strong { font-size:12px; }
+.calendar-order-row > span:nth-child(2) > small { max-width:600px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.calendar-order-row > strong:last-child { font-family:"DM Serif Display",serif; font-size:18px; font-weight:400; white-space:nowrap; }
+.calendar-order-row .payment-pill { justify-self:start; }
+.orders-card:has(.bakery-calendar-grid) .orders-head { padding-bottom:20px; }
+.orders-card:has(.bakery-calendar-grid) .orders-head h2 { font-size:34px; }
+.orders-card:has(.bakery-calendar-grid) .orders-head p { margin-top:7px; }
+.orders-card:has(.bakery-calendar-grid) > div:last-child > div:last-child { box-shadow:0 8px 24px rgba(26,3,2,.04); }
+@media(max-width:900px){ .bakery-calendar-day{min-height:92px;padding:8px}.bakery-calendar-badges span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.calendar-order-row{min-height:64px} }
+@media(max-width:700px){ .orders-card:has(.bakery-calendar-grid) .orders-head{padding:18px}.orders-card:has(.bakery-calendar-grid) .orders-head h2{font-size:27px}.orders-card:has(.bakery-calendar-grid) > div:last-child{padding:0 12px 15px!important}.bakery-calendar-day{min-height:68px;padding:6px}.bakery-calendar-number{width:23px;height:23px}.bakery-calendar-badges{margin-top:6px}.bakery-calendar-badges span{padding:3px 5px;font-size:6px}.calendar-order-row{grid-template-columns:52px minmax(0,1fr) auto;gap:9px;padding:12px}.calendar-order-row:hover{padding-left:12px}.calendar-order-row > strong:first-child{font-size:14px}.calendar-order-row > strong:last-child{display:none} }
