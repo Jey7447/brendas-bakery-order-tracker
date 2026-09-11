@@ -16,6 +16,7 @@ export type OrderItem = {
 
 export type Order = {
   id: string;
+  rowNumber?: number;
   createdAt: string;
   customerName: string;
   phone: string;
