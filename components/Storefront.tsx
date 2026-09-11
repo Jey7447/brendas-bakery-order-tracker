@@ -16,9 +16,12 @@ export default function Storefront() {
   const [category, setCategory] = useState("All");
   const [cartReady, setCartReady] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<(typeof products)[number] | null>(null);
+  const [heroIndex, setHeroIndex] = useState(0);
 
   const categories = ["All", ...Array.from(new Set(products.map(p => p.category)))];
   const visible = category === "All" ? products : products.filter(p => p.category === category);
+  const heroProducts = products.slice(0, Math.min(4, products.length));
+  const heroProduct = heroProducts[heroIndex % heroProducts.length];
   const cartDetails = cart
     .map(line => ({ ...line, product: products.find(p => p.id === line.productId) }))
     .filter(line => line.product);
@@ -44,6 +47,14 @@ export default function Storefront() {
   useEffect(() => {
     if (cartReady) localStorage.setItem(CART_KEY, JSON.stringify(cart));
   }, [cart, cartReady]);
+
+  useEffect(() => {
+    if (heroProducts.length < 2) return;
+    const timer = window.setInterval(() => {
+      setHeroIndex(current => (current + 1) % heroProducts.length);
+    }, 4500);
+    return () => window.clearInterval(timer);
+  }, [heroProducts.length]);
 
   function add(id: string) {
     setCart(current => {
@@ -91,11 +102,28 @@ export default function Storefront() {
             <span className="hero-note">Made with care in Nairobi</span>
           </div>
         </div>
-        <div className="hero-art">
+        <div className="hero-art" aria-label={`Featured bake: ${heroProduct.name}`}>
           <div className="hero-circle" />
-          <img src={products[0].image} alt="Chocolate celebration cake" />
+          <div className="hero-product-image" key={heroProduct.id}>
+            <img src={heroProduct.image} alt={heroProduct.name} />
+          </div>
           <div className="hero-sticker">BAKED<br/>TODAY</div>
-          <div className="hero-label">01 / 04</div>
+          <div className="hero-label">{String(heroIndex + 1).padStart(2, "0")} / {String(heroProducts.length).padStart(2, "0")}</div>
+          <div className="hero-feature-card">
+            <span>FEATURED BAKE</span>
+            <strong>{heroProduct.name}</strong>
+            <small>{money(heroProduct.price)}</small>
+          </div>
+          <div className="hero-dots" aria-label="Featured bake selector">
+            {heroProducts.map((product, index) => (
+              <button
+                key={product.id}
+                className={index === heroIndex ? "active" : ""}
+                onClick={() => setHeroIndex(index)}
+                aria-label={`Show ${product.name}`}
+              />
+            ))}
+          </div>
         </div>
       </section>
 
