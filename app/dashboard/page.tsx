@@ -67,6 +67,7 @@ function mapSheetOrder(order: SheetOrder): Order {
 
   return {
     id: order["Order ID"],
+    rowNumber: order.row_number,
     createdAt: order["Created At"],
     customerName: order["Customer Name"],
     phone: String(order.Phone),
@@ -205,8 +206,8 @@ export default function Dashboard() {
           </div>
 
           <div className="order-list">
-            {sorted.map((order) => (
-              <article className={`order-row ${order.paymentStatus === "UNPAID" && order.deliveryDate === TODAY ? "needs-payment" : ""}`} key={order.id}>
+            {sorted.map((order, index) => (
+              <article className={`order-row ${order.paymentStatus === "UNPAID" && order.deliveryDate === TODAY ? "needs-payment" : ""}`} key={`${order.id}-${order.rowNumber ?? index}`}>
                 <div className="order-time"><strong>{order.deliveryTime}</strong><span>{order.deliveryDate === TODAY ? "Today" : order.deliveryDate}</span></div>
                 <div className="order-customer"><strong>{order.customerName}</strong><span>{order.id} · {order.items.map((i) => `${i.name} ×${i.quantity}`).join(", ")}</span></div>
                 <div className="order-status"><span className={`status-dot ${order.orderStatus.toLowerCase()}`}></span>{statusLabel[order.orderStatus]}</div>
